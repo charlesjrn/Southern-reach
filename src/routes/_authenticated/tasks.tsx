@@ -123,22 +123,71 @@ function TaskForm({ userId, leader }: { userId: string; leader: boolean }) {
 function TaskCard({ t, userId, leader, manager }: { t: any; userId: string; leader: boolean; manager: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [progress, setProgress] = useState<number>(t.progress);
-  const canEdit = t.assignee_id === userId || t.created_by === userId || leader;
+  const [form, setForm] = useState({
+    title: t.title,
+    description: t.description ?? "",
+    priority: t.priority,
+    due_date: t.due_date ?? "",
+  });
+  const canUpdate = t.assignee_id === userId || t.created_by === userId || manager;
+  const canEditDetails = t.created_by === userId || manager;
   const canDelete = t.created_by === userId || manager;
 
+  // Writes check that a row was actually changed. If the database refuses the change, say so.
   const update = async (patch: Record<string, unknown>) => {
-    const { error } = await supabase.from("tasks").update(patch).eq("id", t.id);
+    const { data, error } = await supabase.from("tasks").update(patch).eq("id", t.id).select("id");
     if (error) return toast.error(errMsg(error));
+    if (!data?.length) return toast.error("You don't have permission to change this task.");
     qc.invalidateQueries({ queryKey: ["tasks"] });
+    return true;
+  };
+
+  const saveDetails = async () => {
+    if (!form.title.trim()) return toast.error("Give the task a title.");
+    const ok = await update({
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      priority: form.priority,
+      due_date: form.due_date || null,
+    });
+    if (ok) {
+      toast.success("Task updated");
+      setEditing(false);
+    }
   };
 
   const remove = async () => {
-    const { error } = await supabase.from("tasks").delete().eq("id", t.id);
+    if (!window.confirm(`Delete the task "${t.title}"?`)) return;
+    const { data, error } = await supabase.from("tasks").delete().eq("id", t.id).select("id");
     if (error) return toast.error(errMsg(error));
+    if (!data?.length) return toast.error("You don't have permission to delete this task.");
     toast.success("Task deleted");
     qc.invalidateQueries({ queryKey: ["tasks"] });
   };
+
+  if (editing) {
+    return (
+      <li className="rounded-lg border p-4 text-sm">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5 sm:col-span-2"><Label>Title</Label><Input maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Details</Label><Textarea rows={2} maxLength={2000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+          <div className="space-y-1.5">
+            <Label>Priority</Label>
+            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+              {PRIORITIES.map((p) => <option key={p} value={p}>{label(p)}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5"><Label>Due date</Label><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button size="sm" onClick={saveDetails}>Save changes</Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li className="rounded-lg border p-4 text-sm">
@@ -153,7 +202,7 @@ function TaskCard({ t, userId, leader, manager }: { t: any; userId: string; lead
         <StatusBadge status={t.status} />
       </div>
 
-      {canEdit && (
+      {canUpdate && (
         <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr_auto] sm:items-center">
           <select aria-label="Status" className="h-9 rounded-md border bg-background px-2 text-sm" value={t.status} onChange={(e) => update({ status: e.target.value })}>
             {STATUSES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
@@ -162,7 +211,10 @@ function TaskCard({ t, userId, leader, manager }: { t: any; userId: string; lead
             <input aria-label="Progress" type="range" min={0} max={100} value={progress} onChange={(e) => setProgress(Number(e.target.value))} onMouseUp={() => update({ progress })} onTouchEnd={() => update({ progress })} className="w-full accent-[var(--color-primary)]" />
             <span className="w-10 text-right tabular-nums">{progress}%</span>
           </div>
-          {canDelete && <Button size="sm" variant="ghost" onClick={remove}>Delete</Button>}
+          <div className="flex gap-1">
+            {canEditDetails && <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>}
+            {canDelete && <Button size="sm" variant="ghost" onClick={remove}>Delete</Button>}
+          </div>
         </div>
       )}
 

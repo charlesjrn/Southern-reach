@@ -40,8 +40,9 @@ function ReportsPage() {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today.toISOString().slice(0, 10));
 
-  if (me && !can.reports(roles)) return <NoAccess />;
-  const available = REPORTS.filter((r) => !r.payrollOnly || can.payroll(roles));
+  if (!me) return <LoadingRows />;
+  if (!can.reports(roles)) return <NoAccess />;
+  const available = REPORTS.filter((r) => (!r.payrollOnly || can.payroll(roles)) && (r.id !== "projects" || can.viewProjects(roles)));
   const meta = REPORTS.find((r) => r.id === report)!;
 
   return (
@@ -130,7 +131,7 @@ async function buildReport(report: ReportId, from: string, to: string): Promise<
     case "hours": {
       const { data, error } = await supabase
         .from("timesheet_entries")
-        .select("hours, work_date, timesheet:timesheets!inner(status, profile:profiles(full_name, employee_id))")
+        .select("hours, work_date, timesheet:timesheets!inner(status, profile:profiles!timesheets_profile_id_fkey(full_name, employee_id))")
         .gte("work_date", from)
         .lte("work_date", to);
       if (error) throw error;
@@ -147,7 +148,7 @@ async function buildReport(report: ReportId, from: string, to: string): Promise<
     case "leave": {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("leave_type, start_date, end_date, status, profile:profiles(full_name, employee_id)")
+        .select("leave_type, start_date, end_date, status, profile:profiles!leave_requests_profile_id_fkey(full_name, employee_id)")
         .lte("start_date", to)
         .gte("end_date", from)
         .order("start_date");
@@ -189,7 +190,7 @@ async function buildReport(report: ReportId, from: string, to: string): Promise<
     case "payroll": {
       const { data, error } = await supabase
         .from("payroll_records")
-        .select("period_start, period_end, gross_pay, super_amount, net_pay, profile:profiles(full_name, employee_id)")
+        .select("period_start, period_end, gross_pay, super_amount, net_pay, profile:profiles!payroll_records_profile_id_fkey(full_name, employee_id)")
         .gte("period_end", from)
         .lte("period_end", to)
         .order("period_end");

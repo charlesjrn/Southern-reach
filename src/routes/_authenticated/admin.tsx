@@ -20,7 +20,8 @@ function Admin() {
   const { data: me } = useMe();
   const { data, isLoading } = useStaffList();
   const qc = useQueryClient();
-  if (me && !can.systemAdmin(me.roles)) return <NoAccess />;
+  if (!me) return <LoadingRows />;
+  if (!can.systemAdmin(me.roles as AppRole[])) return <NoAccess />;
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["staff-list"] });
 
@@ -137,8 +138,9 @@ function AddStaffForm({ onCreated }: { onCreated: () => void }) {
         </div>
         <fieldset className="sm:col-span-2">
           <legend className="mb-2 text-sm font-medium">Roles</legend>
+          <p className="mb-2 text-xs text-muted-foreground">There is one System Administrator account. New accounts are staff roles only.</p>
           <div className="flex flex-wrap gap-4">
-            {ALL_ROLES.map((r) => (
+            {ALL_ROLES.filter((r) => r !== "admin").map((r) => (
               <label key={r} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={roles.includes(r)} onChange={() => toggleRole(r)} className="size-4 accent-[var(--color-primary)]" />
                 {ROLE_LABELS[r]}

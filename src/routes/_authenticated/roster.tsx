@@ -86,17 +86,24 @@ function ShiftForm() {
   );
 }
 
+const SYDNEY = "Australia/Sydney";
+const dayFmt = new Intl.DateTimeFormat("en-AU", { timeZone: SYDNEY, weekday: "short", day: "numeric", month: "short" });
+const timeFmt = new Intl.DateTimeFormat("en-AU", { timeZone: SYDNEY, hour: "numeric", minute: "2-digit" });
+
 function Shifts({ userId, canManage }: { userId: string; canManage: boolean }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["shifts"],
+  const [page, setPage] = useState(0); // each page is 14 days; 0 = starting today
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+  from.setDate(from.getDate() + page * 14);
+  const to = new Date(from.getTime() + 14 * 86400000);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["shifts", page],
     queryFn: async () => {
-      const from = new Date();
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(from.getTime() + 14 * 86400000);
       const { data, error } = await supabase
         .from("shifts")
-        .select("*, profile:profiles(full_name, employee_id)")
+        .select("*, profile:profiles!shifts_profile_id_fkey(full_name, employee_id)")
         .gte("starts_at", from.toISOString())
         .lt("starts_at", to.toISOString())
         .order("starts_at");
@@ -111,15 +118,31 @@ function Shifts({ userId, canManage }: { userId: string; canManage: boolean }) {
     qc.invalidateQueries({ queryKey: ["shifts"] });
   };
 
+  const rangeLabel = `${dayFmt.format(from)} to ${dayFmt.format(new Date(to.getTime() - 86400000))}`;
+
   return (
-    <Panel title="Next 14 days">
-      {isLoading ? <LoadingRows /> : !data?.length ? <EmptyState title="No shifts scheduled" /> : (
+    <Panel
+      title="Shifts"
+      action={
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPage((p) => p - 1)}>Previous</Button>
+          <Button size="sm" variant="outline" onClick={() => setPage(0)} disabled={page === 0}>Today</Button>
+          <Button size="sm" variant="outline" onClick={() => setPage((p) => p + 1)}>Next</Button>
+        </div>
+      }
+    >
+      <p className="mb-3 text-xs text-muted-foreground">{rangeLabel} · times shown in Sydney time</p>
+      {error ? (
+        <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-destructive">Could not load shifts: {errMsg(error)}</p>
+      ) : isLoading ? <LoadingRows /> : !data?.length ? <EmptyState title="No shifts in this period" /> : (
         <ul className="divide-y text-sm">
           {data.map((s: any) => (
             <li key={s.id} className={`flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between ${s.profile_id === userId ? "font-medium" : ""}`}>
               <div>
-                <p>{fmtDate(s.starts_at)} · {fmtTime(s.starts_at)} to {fmtTime(s.ends_at)}</p>
-                <p className="text-muted-foreground">{s.profile?.full_name ?? "Unknown"}{s.role_label ? ` · ${s.role_label}` : ""}{s.location ? ` · ${s.location}` : ""}</p>
+                <p>{dayFmt.format(new Date(s.starts_at))} · {timeFmt.format(new Date(s.starts_at))} to {timeFmt.format(new Date(s.ends_at))}</p>
+                <p className="text-muted-foreground">
+                  {s.profile?.full_name ?? "Unknown staff member"}{s.role_label ? ` · ${s.role_label}` : ""}{s.location ? ` · ${s.location}` : ""}
+                </p>
               </div>
               {canManage && <Button size="sm" variant="ghost" onClick={() => remove(s.id)}>Delete</Button>}
             </li>

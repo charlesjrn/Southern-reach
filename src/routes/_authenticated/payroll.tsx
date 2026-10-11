@@ -128,7 +128,7 @@ function PayrollRecords() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll_records")
-        .select("*, profile:profiles(full_name, employee_id)")
+        .select("*, profile:profiles!payroll_records_profile_id_fkey(full_name, employee_id)")
         .order("period_end", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -173,7 +173,7 @@ function MyPayslips({ userId }: { userId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll_records")
-        .select("*, profile:profiles(full_name, employee_id)")
+        .select("*, profile:profiles!payroll_records_profile_id_fkey(full_name, employee_id)")
         .eq("profile_id", userId)
         .eq("published", true)
         .order("period_end", { ascending: false });

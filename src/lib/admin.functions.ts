@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const roleEnum = z.enum(["admin", "management", "hr", "payroll", "employee"]);
+// Accounts managed by the administrator can never be given the admin role. There is one System Administrator.
+const staffRoleEnum = z.enum(["management", "hr", "payroll", "employee"]);
 
 /** Public: tells the setup page whether a first administrator still needs creating. */
 export const needsSetup = createServerFn({ method: "GET" }).handler(async () => {
@@ -56,7 +58,7 @@ export const createStaff = createServerFn({ method: "POST" })
       email: z.string().trim().email().max(255),
       full_name: z.string().trim().min(1).max(100),
       password: z.string().min(10).max(72),
-      roles: z.array(roleEnum).min(1),
+      roles: z.array(staffRoleEnum).min(1),
       department_id: z.string().uuid().nullable().optional(),
       position_id: z.string().uuid().nullable().optional(),
     }).parse(i),
@@ -86,10 +88,10 @@ export const createStaff = createServerFn({ method: "POST" })
 
 export const setUserRoles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ user_id: z.string().uuid(), roles: z.array(roleEnum).min(1) }).parse(i))
+  .inputValidator((i) => z.object({ user_id: z.string().uuid(), roles: z.array(staffRoleEnum).min(1) }).parse(i))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
-    if (data.user_id === context.userId && !data.roles.includes("admin")) throw new Error("You can't remove your own administrator role.");
+    if (data.user_id === context.userId) throw new Error("You can't change your own roles here.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id).not("role", "in", `(${data.roles.join(",")})`);
     await supabaseAdmin.from("user_roles").upsert(data.roles.map((role) => ({ user_id: data.user_id, role })), { onConflict: "user_id,role", ignoreDuplicates: true });

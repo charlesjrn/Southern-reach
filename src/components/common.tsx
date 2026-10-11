@@ -7,12 +7,16 @@ import { label } from "@/lib/format";
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between animate-rise">
-      <div>
-        <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="animate-rise relative overflow-hidden rounded-2xl border bg-card px-5 py-6 shadow-card sm:px-7">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1.5" style={{ background: "var(--gradient-brand)" }} />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full opacity-[0.18] blur-3xl" style={{ background: "var(--gradient-brand)" }} />
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl"><span className="text-gradient">{title}</span></h1>
+          {description && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>}
+        </div>
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
@@ -68,10 +72,10 @@ export function SearchBox({ value, onChange, placeholder = "Search…" }: { valu
 
 export function Panel({ title, action, children, className = "" }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border bg-card p-4 shadow-card sm:p-5 animate-rise ${className}`}>
+    <section className={`rounded-2xl border bg-card p-5 shadow-card transition-shadow duration-300 hover:shadow-pop sm:p-6 animate-rise ${className}`}>
       {(title || action) && (
-        <div className="mb-4 flex items-center justify-between gap-2">
-          {title && <h2 className="text-base font-semibold">{title}</h2>}
+        <div className="mb-5 flex items-center justify-between gap-3 border-b pb-3">
+          {title && <h2 className="text-base font-semibold tracking-tight">{title}</h2>}
           {action}
         </div>
       )}

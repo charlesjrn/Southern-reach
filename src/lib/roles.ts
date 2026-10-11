@@ -18,6 +18,7 @@ export const can = {
   manageStaff: (r: AppRole[]) => hasAny(r, ["admin", "hr"]),
   manageRoster: (r: AppRole[]) => hasAny(r, ["admin", "management", "hr"]),
   manageProjects: (r: AppRole[]) => hasAny(r, ["admin", "management"]),
+  viewProjects: (r: AppRole[]) => hasAny(r, ["admin", "management", "hr"]),
   payroll: (r: AppRole[]) => hasAny(r, ["admin", "payroll"]),
   reports: (r: AppRole[]) => hasAny(r, ["admin", "management", "hr", "payroll"]),
   postAnnouncements: (r: AppRole[]) => hasAny(r, ["admin", "management", "hr"]),

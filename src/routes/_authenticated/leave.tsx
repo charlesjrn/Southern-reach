@@ -125,7 +125,7 @@ function ReviewQueue({ reviewerId }: { reviewerId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("*, profile:profiles(full_name, employee_id)")
+        .select("*, profile:profiles!leave_requests_profile_id_fkey(full_name, employee_id)")
         .eq("status", "submitted")
         .order("start_date");
       if (error) throw error;

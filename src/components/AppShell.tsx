@@ -21,7 +21,7 @@ const NAV: NavItem[] = [
   { to: "/roster", label: "Roster", icon: CalendarClock },
   { to: "/timesheets", label: "Timesheets", icon: Clock },
   { to: "/leave", label: "Leave", icon: CalendarDays },
-  { to: "/projects", label: "Clients & projects", icon: Briefcase },
+  { to: "/projects", label: "Clients & projects", icon: Briefcase, show: can.viewProjects },
   { to: "/payroll", label: "Payroll & payslips", icon: Wallet },
   { to: "/employees", label: "Employees", icon: Users, show: can.adminPortal },
   { to: "/reports", label: "Reports", icon: BarChart3, show: can.reports },
@@ -31,7 +31,7 @@ const NAV: NavItem[] = [
 function Brand() {
   return (
     <div className="flex items-center gap-2.5 px-2">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary font-display text-sm font-bold text-sidebar-primary-foreground">SR</div>
+      <div className="flex size-9 items-center justify-center rounded-xl font-display text-sm font-bold text-white shadow-lg" style={{ background: "var(--gradient-brand)" }}>SR</div>
       <div className="leading-tight">
         <p className="font-display text-sm font-semibold text-sidebar-accent-foreground">Southern Reach</p>
         <p className="text-[11px] text-sidebar-muted">Agency Hub</p>
@@ -42,16 +42,18 @@ function Brand() {
 
 function NavList({ roles, onNavigate }: { roles: AppRole[]; onNavigate?: () => void }) {
   return (
-    <nav className="mt-6 flex flex-col gap-0.5">
+    <nav className="mt-7 flex flex-col gap-1">
       {NAV.filter((n) => !n.show || n.show(roles)).map((n) => (
         <Link
           key={n.to}
           to={n.to}
           onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-          activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold [&>svg]:text-sidebar-primary" }}
+          className="group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground transition-all duration-200 hover:translate-x-0.5 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+          activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-full before:bg-sidebar-primary before:content-['']" }}
         >
-          <n.icon className="size-4" />
+          <span className="grid size-8 place-items-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
+            <n.icon className="size-4 text-sidebar-muted transition-colors group-hover:text-sidebar-primary" />
+          </span>
           {n.label}
         </Link>
       ))}
@@ -116,10 +118,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-sidebar px-3 py-5">
+    <div className="flex h-full flex-col px-3 py-6" style={{ background: "var(--gradient-sidebar)" }}>
       <Brand />
       <NavList roles={roles} onNavigate={() => setOpen(false)} />
-      <div className="mt-auto rounded-lg border border-sidebar-border p-3">
+      <div className="mt-auto rounded-xl border border-sidebar-border bg-white/5 p-3 backdrop-blur-sm">
         <p className="truncate text-sm font-medium text-sidebar-accent-foreground">{name}</p>
         <p className="text-xs text-sidebar-muted">{me?.profile?.employee_id} · {topRole ? ROLE_LABELS[topRole] : ""}</p>
       </div>
@@ -135,12 +137,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           {sidebar}
         </SheetContent>
       </Sheet>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/70 bg-background/80 px-4 backdrop-blur-md sm:px-6">
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <Menu className="size-5" />
         </Button>
         <p className="hidden text-sm text-muted-foreground sm:block">
-          {new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: "Australia/Sydney" })}
+          {new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
         </p>
         <div className="ml-auto flex items-center gap-1">
           {me && <Notifications userId={me.user.id} />}
@@ -152,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+      <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

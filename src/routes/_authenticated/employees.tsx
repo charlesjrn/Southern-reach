@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useMe } from "@/hooks/use-me";
 import { supabase } from "@/integrations/supabase/client";
-import { setUserActive } from "@/lib/admin.functions";
+import { setUserActive, setUserRoles } from "@/lib/admin.functions";
 import { can, ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { fmtDate, label } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,8 @@ function EmployeesPage() {
   const roles = (me?.roles ?? []) as AppRole[];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  if (me && !can.adminPortal(roles)) return <NoAccess />;
+  if (!me) return <LoadingRows />;
+  if (!can.adminPortal(roles)) return <NoAccess />;
 
   const canEdit = can.manageStaff(roles); // admin and HR
   const seesSalary = roles.some((r) => r === "admin" || r === "hr" || r === "payroll");
@@ -177,6 +178,16 @@ function EmployeeDetail({ id, canEdit, canDeactivate, seesSalary, selfId }: { id
         )}
       </Panel>
 
+      {canDeactivate && id !== selfId && roleRows && (
+        <Panel title="Roles">
+          <RoleEditor
+            key={roleRows.map((r: any) => r.role).join(",")}
+            id={id}
+            current={roleRows.map((r: any) => r.role as AppRole)}
+            onSaved={refresh}
+          />
+        </Panel>
+      )}
       {canEdit && (
         <Panel title="Assignment">
           <form onSubmit={saveAssignment} className="grid gap-4">
@@ -319,6 +330,40 @@ function OrgStructure() {
           <div><Button type="submit">Add position</Button></div>
         </form>
       </Panel>
+    </div>
+  );
+}
+
+const STAFF_ROLE_OPTIONS = ["management", "hr", "payroll", "employee"] as const;
+
+function RoleEditor({ id, current, onSaved }: { id: string; current: AppRole[]; onSaved: () => void }) {
+  const [roles, setRoles] = useState<string[]>(current.filter((r) => r !== "admin"));
+  const [saving, setSaving] = useState(false);
+  const toggle = (r: string) => setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
+  const save = async () => {
+    if (roles.length === 0) return toast.error("Choose at least one role.");
+    setSaving(true);
+    try {
+      await setUserRoles({ data: { user_id: id, roles: roles as (typeof STAFF_ROLE_OPTIONS)[number][] } });
+      toast.success("Roles updated");
+      onSaved();
+    } catch (err) {
+      toast.error(errMsg(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="flex flex-wrap gap-4">
+        {STAFF_ROLE_OPTIONS.map((r) => (
+          <label key={r} className="flex items-center gap-2">
+            <input type="checkbox" checked={roles.includes(r)} onChange={() => toggle(r)} className="size-4 accent-[var(--color-primary)]" />
+            {ROLE_LABELS[r as AppRole]}
+          </label>
+        ))}
+      </div>
+      <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save roles"}</Button>
     </div>
   );
 }

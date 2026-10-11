@@ -155,7 +155,7 @@ function TimesheetReview({ reviewerId }: { reviewerId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("timesheets")
-        .select("*, profile:profiles(full_name, employee_id)")
+        .select("*, profile:profiles!timesheets_profile_id_fkey(full_name, employee_id)")
         .eq("status", "submitted")
         .order("week_start");
       if (error) throw error;

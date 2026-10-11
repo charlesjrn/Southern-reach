@@ -42,7 +42,7 @@ export function LoginForm({ portal }: { portal: "staff" | "admin" }) {
 
       const { data: roleRows } = await supabase.from("user_roles").select("role");
       const roles = (roleRows ?? []).map((r) => r.role as AppRole);
-      qc.invalidateQueries();
+      qc.clear(); // drop anything cached from a previous account in this browser
       toast.success("Welcome back");
       navigate({ to: portal === "admin" ? homeFor(roles) : "/dashboard", replace: true });
     } catch (err) {
